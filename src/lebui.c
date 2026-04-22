@@ -9,6 +9,27 @@
 static struct termios lebui_orig_termios;
 static int lebui_raw_on = 0;
 
+static const char **g_tabbar_tabs = (const char **)0;
+static int g_tabbar_count = 0;
+static int g_tabbar_active = 0;
+static int g_tabbar_cols = 0;
+
+void lebui_tabbar_attach(const char **tabs, int count, int active, int cols) {
+    g_tabbar_tabs = tabs;
+    g_tabbar_count = count;
+    g_tabbar_active = active;
+    g_tabbar_cols = cols;
+}
+
+void lebui_tabbar_detach(void) {
+    g_tabbar_tabs = (const char **)0;
+    g_tabbar_count = 0;
+}
+
+static int lebui_top_content_row(void) {
+    return (g_tabbar_tabs && g_tabbar_count > 0) ? 2 : 1;
+}
+
 void lebui_raw_enable(void) {
     struct termios raw;
 
@@ -221,6 +242,41 @@ void lebui_draw_titlebar(const char *title, int cols) {
     len = (int)strlen(title);
     printf("%s", title);
     for (i = len; i < cols; i++) putchar(' ');
+
+    if (g_tabbar_tabs && g_tabbar_count > 0)
+        lebui_draw_tabbar(g_tabbar_tabs, g_tabbar_count, g_tabbar_active, g_tabbar_cols);
+}
+
+void lebui_draw_tabbar(const char **tabs, int count, int active, int cols) {
+    int i;
+    int len;
+    int used;
+    const char *hint;
+    int hlen;
+
+    lebui_goto(1, 1);
+    printf("%s", LEBUI_CLR_BORDER);
+    used = 0;
+    for (i = 0; i < count; i++) {
+        len = (int)strlen(tabs[i]);
+        if (i == active) {
+            printf("%s[ %s ]%s", LEBUI_CLR_SELECT, tabs[i], LEBUI_CLR_BORDER);
+            used += len + 4;
+        } else {
+            printf("  %s  ", tabs[i]);
+            used += len + 4;
+        }
+        if (i < count - 1) {
+            putchar(' ');
+            used++;
+        }
+    }
+    hint = "  <TAB> Switch";
+    hlen = (int)strlen(hint);
+    if (used + hlen < cols)
+        printf("%s", hint);
+    printf("%s", LEBUI_CLR_NORMAL);
+    (void)cols;
 }
 
 void lebui_draw_helpbar(const char *text, int row, int cols) {
@@ -292,6 +348,7 @@ int lebui_menu(const char *title, const char **items, int count,
         } else if (key == LEBUI_KEY_HOME) sel = 0;
         else if (key == LEBUI_KEY_END) sel = count - 1;
         else if (key == LEBUI_KEY_ENTER) return sel;
+        else if (key == LEBUI_KEY_TAB) return LEBUI_KEY_TAB;
         else if (key == LEBUI_KEY_ESC || key == 'q') return -1;
     }
 }
@@ -545,7 +602,7 @@ int lebui_menu_auto(const char *title, const char **items, int count,
     if (bh > rows - 4) bh = rows - 4;
     bx = (cols - bw) / 2 + 1;
     by = (rows - bh) / 2;
-    if (by < 3) by = 3;
+    if (by < lebui_top_content_row() + 2) by = lebui_top_content_row() + 2;
     view_h = bh - 4;
 
     sel = 0;
@@ -592,6 +649,7 @@ int lebui_menu_auto(const char *title, const char **items, int count,
         if (key == LEBUI_KEY_UP && sel > 0) sel--;
         else if (key == LEBUI_KEY_DOWN && sel < count - 1) sel++;
         else if (key == LEBUI_KEY_ENTER) return sel;
+        else if (key == LEBUI_KEY_TAB) return LEBUI_KEY_TAB;
         else if (key == LEBUI_KEY_ESC) return -1;
     }
 }
@@ -620,7 +678,7 @@ int lebui_input_ex(const char *title, const char *prompt, char *buf,
     bh = 8;
     bx = (cols - bw) / 2 + 1;
     by = (rows - bh) / 2;
-    if (by < 3) by = 3;
+    if (by < lebui_top_content_row() + 2) by = lebui_top_content_row() + 2;
     fw = bw - 6;
     if (maxlen - 1 < fw) fw = maxlen - 1;
 
@@ -687,7 +745,7 @@ int lebui_confirm_auto(const char *title, const char *message,
     bh = 8;
     bx = (cols - bw) / 2 + 1;
     by = (rows - bh) / 2;
-    if (by < 3) by = 3;
+    if (by < lebui_top_content_row() + 2) by = lebui_top_content_row() + 2;
 
     lebui_draw_screen(title, " <Tab> Switch  <Enter> Select", rows, cols);
     lebui_draw_box_shadow(by, bx, bh, bw, title);
@@ -736,7 +794,7 @@ void lebui_msgbox_auto(const char *title, const char *message,
     bh = 7;
     bx = (cols - bw) / 2 + 1;
     by = (rows - bh) / 2;
-    if (by < 3) by = 3;
+    if (by < lebui_top_content_row() + 2) by = lebui_top_content_row() + 2;
 
     lebui_draw_screen(title, " <Enter> OK", rows, cols);
     lebui_draw_box_shadow(by, bx, bh, bw, title);
@@ -754,7 +812,9 @@ void lebui_msgbox_auto(const char *title, const char *message,
 void lebui_progress_init(lebui_prog_state_t *st, const char *title,
                          int rows, int cols) {
     int prog_h;
+    int top_row;
 
+    top_row = lebui_top_content_row();
     st->bw = 56;
     if (st->bw > cols - 4) st->bw = cols - 4;
     prog_h = 8;
@@ -762,7 +822,7 @@ void lebui_progress_init(lebui_prog_state_t *st, const char *title,
     if (st->log_h > rows - prog_h - 6) st->log_h = rows - prog_h - 6;
     if (st->log_h < 4) st->log_h = 4;
     st->bx = (cols - st->bw) / 2 + 1;
-    st->by = 3;
+    st->by = top_row + 2;
     st->log_y = st->by + prog_h;
     st->log_count = 0;
     st->drawn = 0;
@@ -872,7 +932,7 @@ int lebui_checklist_auto(const char *title, const char **items, int *checked,
     if (bh > rows - 4) bh = rows - 4;
     bx = (cols - bw) / 2 + 1;
     by = (rows - bh) / 2;
-    if (by < 3) by = 3;
+    if (by < lebui_top_content_row() + 2) by = lebui_top_content_row() + 2;
     view_h = bh - 4;
 
     lebui_draw_screen(title, helpbar, rows, cols);

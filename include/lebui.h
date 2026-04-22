@@ -89,6 +89,9 @@ void lebui_draw_hline(int row, int col, int len, char ch);
 void lebui_center_text(int row, int bx, int bw, const char *color, const char *text);
 
 void lebui_draw_titlebar(const char *title, int cols);
+void lebui_draw_tabbar(const char **tabs, int count, int active, int cols);
+void lebui_tabbar_attach(const char **tabs, int count, int active, int cols);
+void lebui_tabbar_detach(void);
 void lebui_draw_helpbar(const char *text, int row, int cols);
 void lebui_draw_screen(const char *titlebar, const char *helpbar, int rows, int cols);
 
