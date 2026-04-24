@@ -182,7 +182,6 @@ void lebui_fill_bg(const char *color, int rows, int cols) {
         lebui_goto(r, 1);
         lebui_clear_line();
     }
-    lebui_flush();
 }
 
 void lebui_draw_box(int y, int x, int h, int w, const char *title) {
@@ -237,14 +236,16 @@ void lebui_draw_titlebar(const char *title, int cols) {
     int i;
     int len;
 
+    if (g_tabbar_tabs && g_tabbar_count > 0) {
+        lebui_draw_tabbar(g_tabbar_tabs, g_tabbar_count, g_tabbar_active, cols);
+        return;
+    }
+
     lebui_goto(1, 1);
     printf("%s", LEBUI_CLR_BAR);
     len = (int)strlen(title);
     printf("%s", title);
     for (i = len; i < cols; i++) putchar(' ');
-
-    if (g_tabbar_tabs && g_tabbar_count > 0)
-        lebui_draw_tabbar(g_tabbar_tabs, g_tabbar_count, g_tabbar_active, g_tabbar_cols);
 }
 
 void lebui_draw_tabbar(const char **tabs, int count, int active, int cols) {
@@ -253,30 +254,42 @@ void lebui_draw_tabbar(const char **tabs, int count, int active, int cols) {
     int used;
     const char *hint;
     int hlen;
+    const char *brand;
 
+    brand = " Lebirun Installer ";
     lebui_goto(1, 1);
-    printf("%s", LEBUI_CLR_BORDER);
-    used = 0;
+    printf("%s", LEBUI_CLR_TITLE);
+    for (i = 0; i < cols; i++) putchar(' ');
+    lebui_goto(1, 1);
+    printf("%s", LEBUI_CLR_TITLE);
+    printf("%s", brand);
+    used = (int)strlen(brand);
+    if (used < cols) {
+        putchar(' ');
+        used++;
+    }
     for (i = 0; i < count; i++) {
         len = (int)strlen(tabs[i]);
         if (i == active) {
-            printf("%s[ %s ]%s", LEBUI_CLR_SELECT, tabs[i], LEBUI_CLR_BORDER);
+            printf("%s[ %s ]%s", LEBUI_CLR_BTN_SEL, tabs[i], LEBUI_CLR_TITLE);
             used += len + 4;
         } else {
-            printf("  %s  ", tabs[i]);
-            used += len + 4;
+            printf("%s %s %s", LEBUI_CLR_TITLE, tabs[i], LEBUI_CLR_TITLE);
+            used += len + 2;
         }
         if (i < count - 1) {
-            putchar(' ');
-            used++;
+            printf("%s | %s", LEBUI_CLR_TITLE, LEBUI_CLR_TITLE);
+            used += 3;
         }
     }
-    hint = "  <TAB> Switch";
+    hint = " <TAB> Switch ";
     hlen = (int)strlen(hint);
-    if (used + hlen < cols)
+    if (used + hlen < cols) {
+        for (i = used; i < cols - hlen; i++) putchar(' ');
+        printf("%s", LEBUI_CLR_TITLE);
         printf("%s", hint);
+    }
     printf("%s", LEBUI_CLR_NORMAL);
-    (void)cols;
 }
 
 void lebui_draw_helpbar(const char *text, int row, int cols) {
@@ -573,6 +586,8 @@ void lebui_draw_screen(const char *titlebar, const char *helpbar,
     lebui_fill_bg(LEBUI_CLR_MENU, rows, cols);
     lebui_draw_titlebar(titlebar, cols);
     lebui_draw_helpbar(helpbar, rows, cols);
+    if (g_tabbar_tabs && g_tabbar_count > 0)
+        lebui_draw_tabbar(g_tabbar_tabs, g_tabbar_count, g_tabbar_active, cols);
 }
 
 int lebui_menu_auto(const char *title, const char **items, int count,
