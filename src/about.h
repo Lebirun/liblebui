@@ -1,5 +1,5 @@
-#ifndef __ABOUT_H__
-#define __ABOUT_H__
+#ifndef ABOUT_H
+#define ABOUT_H
 
 #define LEBUI_VERSION "0.1.0"
 
