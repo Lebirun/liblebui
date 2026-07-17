@@ -1,5 +1,7 @@
-CC = x86_64-elf-gcc
-AR = x86_64-elf-ar
+TARGET ?= x86_64-elf
+ARCH ?= x86_64
+CC = $(TARGET)-gcc
+AR = $(TARGET)-ar
 
 V ?= 0
 ifeq ($(V),0)
@@ -16,21 +18,27 @@ LIBC = ../../libc
 LIBC_ABS = $(abspath $(LIBC))
 SYSROOT = ../../sysroot
 
-CFLAGS = -Wall -Wextra -ffreestanding -fno-builtin -fno-stack-protector -fno-pic -Os -fomit-frame-pointer -nostdinc -ffunction-sections -fdata-sections -fdiagnostics-color=always
-CPPFLAGS = -isystem $(LIBC_ABS)/leblibc/include -isystem $(abspath $(SYSROOT))/usr/include -isystem $(LIBC_ABS)/leblibc/arch/x86_64 -isystem $(LIBC_ABS)/leblibc/arch/generic -I$(LIBC_ABS)/include -I$(LIBC_ABS)/src -Iinclude
+CFLAGS = -Wall -Wextra -Wdeclaration-after-statement -ffreestanding -fno-builtin -fno-stack-protector -fno-pic -Os -fomit-frame-pointer -nostdinc -ffunction-sections -fdata-sections -fdiagnostics-color=always
+CPPFLAGS = -isystem $(LIBC_ABS)/leblibc/include -isystem $(abspath $(SYSROOT))/usr/include -isystem $(LIBC_ABS)/leblibc/arch/$(ARCH) -isystem $(LIBC_ABS)/leblibc/arch/generic -I$(LIBC_ABS)/include -I$(LIBC_ABS)/src -Iinclude
+CFLAGS += $(EXTRA_CFLAGS)
+CPPFLAGS += $(EXTRA_CPPFLAGS)
 
-SRCS = src/lebui.c
+SRCS = src/terminal.c src/input.c src/draw.c src/tabs.c \
+       src/menus.c src/dialogs.c src/progress.c
 OBJS = $(patsubst src/%.c,build/%.o,$(SRCS))
+DEPS = $(OBJS:.o=.d)
 
 LIBDIR = lib
+PREFIX ?= /usr
+DESTDIR ?=
 
-.PHONY: all clean
+.PHONY: all clean install
 
 all: $(LIBDIR)/liblebui.a
 
 build/%.o: src/%.c include/lebui.h
 	$(Q)mkdir -p $(dir $@)
-	$(MSG_CC)$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
+	$(MSG_CC)$(CC) $(CFLAGS) $(CPPFLAGS) -MMD -MP -c $< -o $@
 
 $(LIBDIR)/liblebui.a: $(OBJS)
 	$(Q)mkdir -p $(LIBDIR)
@@ -38,3 +46,10 @@ $(LIBDIR)/liblebui.a: $(OBJS)
 
 clean:
 	rm -rf build $(LIBDIR)
+
+install: $(LIBDIR)/liblebui.a
+	$(Q)mkdir -p $(DESTDIR)$(PREFIX)/include $(DESTDIR)$(PREFIX)/lib
+	$(Q)cp include/lebui.h $(DESTDIR)$(PREFIX)/include/lebui.h
+	$(Q)cp $(LIBDIR)/liblebui.a $(DESTDIR)$(PREFIX)/lib/liblebui.a
+
+-include $(DEPS)

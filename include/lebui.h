@@ -50,6 +50,10 @@
 #define LEBUI_CLR_SHADOW   "\033[0;30;40m"
 
 #define LEBUI_PROG_LOG_MAX 8
+#define LEBUI_DEFAULT_ROWS 25
+#define LEBUI_DEFAULT_COLS 80
+#define LEBUI_RESULT_CANCEL -1
+#define LEBUI_RESULT_OK 0
 
 typedef struct {
     int rows;
@@ -69,6 +73,9 @@ typedef struct {
 
 void lebui_raw_enable(void);
 void lebui_raw_disable(void);
+int lebui_raw_is_enabled(void);
+int lebui_init(void);
+void lebui_shutdown(void);
 
 int lebui_read_key(void);
 
