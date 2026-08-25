@@ -1,12 +1,36 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdlib.h>
+#include <signal.h>
 #include <termios.h>
 #include <sys/ioctl.h>
 #include "lebui.h"
 
 static struct termios lebui_orig_termios;
 static int lebui_raw_on = 0;
+
+static void lebui_signal_exit(int signal_number) {
+    static const char restore[] = "\033[0m\033[?25h\033[?1049l";
+
+    if (lebui_raw_on) {
+        tcsetattr(STDIN_FILENO, TCSANOW, &lebui_orig_termios);
+        lebui_raw_on = 0;
+    }
+    write(STDOUT_FILENO, restore, sizeof(restore) - 1);
+    _exit(128 + signal_number);
+}
+
+static void lebui_install_signal_handlers(void) {
+    signal(SIGHUP, lebui_signal_exit);
+    signal(SIGQUIT, lebui_signal_exit);
+    signal(SIGILL, lebui_signal_exit);
+    signal(SIGBUS, lebui_signal_exit);
+    signal(SIGABRT, lebui_signal_exit);
+    signal(SIGFPE, lebui_signal_exit);
+    signal(SIGSEGV, lebui_signal_exit);
+    signal(SIGTERM, lebui_signal_exit);
+}
 
 void lebui_raw_enable(void) {
     struct termios raw;
@@ -36,13 +60,18 @@ int lebui_raw_is_enabled(void) {
 int lebui_init(void) {
     lebui_raw_enable();
     if (!lebui_raw_on) return LEBUI_RESULT_CANCEL;
+    lebui_install_signal_handlers();
+    lebui_puts("\033[?1049h");
     lebui_hide_cursor();
+    lebui_flush();
     return LEBUI_RESULT_OK;
 }
 
 void lebui_shutdown(void) {
+    if (!lebui_raw_on) return;
     lebui_show_cursor();
     lebui_puts(LEBUI_CLR_NORMAL);
+    lebui_puts("\033[?1049l");
     lebui_flush();
     lebui_raw_disable();
 }
@@ -106,4 +135,3 @@ void lebui_puts(const char *s) {
 void lebui_flush(void) {
     fflush(stdout);
 }
-
