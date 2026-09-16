@@ -40,7 +40,11 @@ int lebui_menu(const char *title, const char **items, int count,
                 printf("%s", LEBUI_CLR_MENU);
             }
             item = items[idx] ? items[idx] : "";
-            printf(" %-*.*s", w - 3, w - 3, item);
+            {
+                int fw = w - 3;
+                if (fw < 0) fw = 0;
+                printf(" %-*.*s", fw, fw, item);
+            }
         }
 
         lebui_flush();
@@ -151,8 +155,10 @@ int lebui_menu_auto(const char *title, const char **items, int count,
     }
     bw = maxw + 4;
     if (bw > cols - 4) bw = cols - 4;
+    if (bw < 10) return LEBUI_RESULT_CANCEL;
     bh = count + 4;
     if (bh > rows - 4) bh = rows - 4;
+    if (bh < 5) return LEBUI_RESULT_CANCEL;
     bx = (cols - bw) / 2 + 1;
     by = (rows - bh) / 2;
     if (by < lebui_internal_top_content_row() + 2)
@@ -247,8 +253,10 @@ int lebui_checklist_auto(const char *title, const char **items, int *checked,
     }
     bw = maxw + 4;
     if (bw > cols - 4) bw = cols - 4;
+    if (bw < 16) return LEBUI_RESULT_CANCEL;
     bh = count + 4;
     if (bh > rows - 4) bh = rows - 4;
+    if (bh < 5) return LEBUI_RESULT_CANCEL;
     bx = (cols - bw) / 2 + 1;
     by = (rows - bh) / 2;
     if (by < lebui_internal_top_content_row() + 2)
