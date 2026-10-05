@@ -5,6 +5,7 @@
 #include <signal.h>
 #include <termios.h>
 #include <sys/ioctl.h>
+#include <sys/klog.h>
 #include "lebui.h"
 
 static struct termios lebui_orig_termios;
@@ -17,6 +18,7 @@ static void lebui_signal_exit(int signal_number) {
         tcsetattr(STDIN_FILENO, TCSANOW, &lebui_orig_termios);
         lebui_raw_on = 0;
     }
+    klogctl(7, NULL, 0);
     write(STDOUT_FILENO, restore, sizeof(restore) - 1);
     _exit(128 + signal_number);
 }
@@ -61,6 +63,7 @@ int lebui_init(void) {
     lebui_raw_enable();
     if (!lebui_raw_on) return LEBUI_RESULT_CANCEL;
     lebui_install_signal_handlers();
+    klogctl(6, NULL, 0);
     lebui_puts("\033[?1049h");
     lebui_hide_cursor();
     lebui_flush();
@@ -73,6 +76,7 @@ void lebui_shutdown(void) {
     lebui_puts(LEBUI_CLR_NORMAL);
     lebui_puts("\033[?1049l");
     lebui_flush();
+    klogctl(7, NULL, 0);
     lebui_raw_disable();
 }
 
